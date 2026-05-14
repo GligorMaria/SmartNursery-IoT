@@ -1,38 +1,85 @@
-# SPDX-FileCopyrightText: 2021 ladyada for Adafruit Industries
-# SPDX-License-Identifier: MIT
-
+import Adafruit_DHT
 import time
+import firebase_admin
+from firebase_admin import credentials, db
 
-import board
+# ─── Firebase Initialization ───────────────────────────────────────────────────
+# Download your serviceAccountKey.json from Firebase Console:
+# Project Settings → Service Accounts → Generate New Private Key
+cred = credentials.Certificate("serviceAccountKey.json")
+firebase_admin.initialize_app(cred, {
+    'databaseURL': 'https://smartnursery-iot-53f11-default-rtdb.firebaseio.com/'
+})
 
-import adafruit_dht
+# ─── DHT11 Configuration ───────────────────────────────────────────────────────
+DHT_SENSOR = Adafruit_DHT.DHT11
+DHT_PIN    = 4          # GPIO 4 (Pin 7 on the board)
 
-# Initial the dht device, with data pin connected to:
-dhtDevice = adafruit_dht.DHT11(board.D23)
+# ─── Safe ranges for a baby's environment ─────────────────────────────────────
+TEMP_MIN =  18.0        # °C  — below this is too cold
+TEMP_MAX =  22.0        # °C  — above this is too warm
+HUM_MIN  =  40.0        # %   — below this is too dry
+HUM_MAX  =  60.0        # %   — above this is too humid
 
-# book-store-mern-app-f97c7
-# https://book-store-mern-app-f97c7-default-rtdb.firebaseio.com/
-# AIzaSyCG8VAOrusSgkWBXScHMgHL7v7dV8V2fxU
-# you can pass DHT22 use_pulseio=False if you wouldn't like to use pulseio.
-# This may be necessary on a Linux single board computer like the Raspberry Pi,
-# but it will not work in CircuitPython.
-# dhtDevice = adafruit_dht.DHT22(board.D18, use_pulseio=False)
+POLL_INTERVAL = 10      # seconds between readings
 
-while True:
-    try:
-        # Print the values to the serial port
-        temperature_c = dhtDevice.temperature
-        temperature_f = temperature_c * (9 / 5) + 32
-        humidity = dhtDevice.humidity
-        print(f"Temp: {temperature_f} F / {temperature_c} C    Humidity: {humidity}% ")
+def classify(temperature, humidity):
+    """Return a status string and human-readable alert message."""
+    issues = []
+    if temperature is not None:
+        if temperature < TEMP_MIN:
+            issues.append(f"Temperature too LOW ({temperature:.1f}°C < {TEMP_MIN}°C)")
+        elif temperature > TEMP_MAX:
+            issues.append(f"Temperature too HIGH ({temperature:.1f}°C > {TEMP_MAX}°C)")
 
-    except RuntimeError as error:
-        # Errors happen fairly often, DHT's are hard to read, just keep going
-        print(error.args[0])
-        time.sleep(5.0)
-        continue
-    except Exception as error:
-        dhtDevice.exit()
-        raise error
+    if humidity is not None:
+        if humidity < HUM_MIN:
+            issues.append(f"Humidity too LOW ({humidity:.1f}% < {HUM_MIN}%)")
+        elif humidity > HUM_MAX:
+            issues.append(f"Humidity too HIGH ({humidity:.1f}% > {HUM_MAX}%)")
 
-    time.sleep(5.0)
+    if issues:
+        return "ALERT", " | ".join(issues)
+    return "OK", "Environment is safe for baby"
+
+def push_to_firebase(temperature, humidity, status, message):
+    """Write a timestamped reading to Firebase Realtime Database."""
+    ref = db.reference('baby_monitor/readings')
+    ref.push({
+        'temperature': temperature,
+        'humidity':    humidity,
+        'status':      status,
+        'message':     message,
+        'timestamp':   {'.sv': 'timestamp'}   # server-side Unix ms
+    })
+
+    # Also keep a 'latest' node so the app can query a single location
+    db.reference('baby_monitor/latest').set({
+        'temperature': temperature,
+        'humidity':    humidity,
+        'status':      status,
+        'message':     message,
+        'timestamp':   {'.sv': 'timestamp'}
+    })
+
+def main():
+    print("Baby Monitor – DHT11 sensor started")
+    print(f"Safe range → Temp: {TEMP_MIN}–{TEMP_MAX} °C | Humidity: {HUM_MIN}–{HUM_MAX} %")
+    print("-" * 60)
+
+    while True:
+        humidity, temperature = Adafruit_DHT.read_retry(DHT_SENSOR, DHT_PIN)
+
+        if humidity is not None and temperature is not None:
+            status, message = classify(temperature, humidity)
+            push_to_firebase(temperature, humidity, status, message)
+
+            icon = "✅" if status == "OK" else "⚠️ "
+            print(f"{icon}  Temp: {temperature:.1f} °C  |  Humidity: {humidity:.1f}%  |  {message}")
+        else:
+            print("⚠️  Failed to read from DHT11 sensor – retrying …")
+
+        time.sleep(POLL_INTERVAL)
+
+if __name__ == "__main__":
+    main()

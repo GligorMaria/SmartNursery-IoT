@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "941631958102",
+    "firebase_url": "https://smartnursery-iot-53f11-default-rtdb.firebaseio.com",
+    "project_id": "smartnursery-iot-53f11",
+    "storage_bucket": "smartnursery-iot-53f11.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:941631958102:android:d33a169f736ffa69f3dff7",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAg47MzORudIwdcxbztObrcUf6IjXjjpz4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
