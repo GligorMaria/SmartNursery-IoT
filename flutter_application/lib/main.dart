@@ -1,5 +1,40 @@
 // lib/main.dart
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
+
+import 'firebase_options.dart';
+import 'screens/home_screen.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  runApp(const BabyMonitorApp());
+}
+
+class BabyMonitorApp extends StatelessWidget {
+  const BabyMonitorApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Baby Monitor',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF7EC8C8),
+          brightness: Brightness.light,
+        ),
+        useMaterial3: true,
+      ),
+      home: const HomeScreen(),
+    );
+  }
+}
+
+/*
+ANDROID/IOS
+// lib/main.dart
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
  
@@ -50,4 +85,4 @@ class BabyMonitorApp extends StatelessWidget {
       home: const HomeScreen(),
     );
   }
-}
+}*/
