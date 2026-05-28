@@ -1,3 +1,4 @@
+
 // lib/screens/home_screen.dart
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -26,17 +27,30 @@ class _HomeScreenState extends State<HomeScreen>
   static const double _humMin  = 40;
   static const double _humMax  = 60;
 
-  // Theme Palette - Soft & Elegant Pastels
-  static const Color _bgPink = Color(0xFFFFF2F5);       // Strawberry milk backdrop
-  static const Color _textDark = Color(0xFF6D4C57);     // Cozy deep cocoa/rose brown
-  static const Color _textMuted = Color(0xFFBCA6AC);    // Soft dusty rose gray
-  static const Color _accentPink = Color(0xFFFFB7C5);   // Sweet bubblegum pink
-  static const Color _softWhite = Color(0xFFFFFFFF);    // Clean marshmallow white
+  // Theme Palette - Harmonized Yellow & Cream Tones
+  static const Color _bgLight       = Color(0xFFFFFDE7); // Creamy light backdrop
+  static const Color _panelBg       = Color(0xFFFFF9C4); // Soft sunshine panel fill
+  static const Color _textDark      = Color(0xFF4E342E); // Deep espresso brown for professional text
+  static const Color _textMuted     = Color(0xFF8D6E63); // Warm cocoa brown
+  static const Color _brightYellow  = Color(0xFFFBC02D); // Deep golden accent yellow
+  static const Color _pastelYellow  = Color(0xFFFFF59D); // Cute soft pastel yellow for interactive accents
   
+  // Font Colors mimicking the image bubble text look within our yellow scheme
+  static const Color _bubbleTextFill = Color(0xFFFFE082); // Bubble candy yellow center
+  static const Color _bubbleText3D   = Color(0xFF5D4037); // Deep structural 3D shadow block
+
   // Status Colors
-  static const Color _statusGreen = Color(0xFFA8D5BA);  // Soft sage green
-  static const Color _statusOrange = Color(0xFFFFCDA3); // Soft peach
-  static const Color _statusRed = Color(0xFFFF9AA2);    // Soft pastel coral red
+  static const Color _statusGreen   = Color(0xFF9CCC65); 
+  static const Color _statusOrange  = Color(0xFFFFB74D); 
+  static const Color _statusRed     = Color(0xFFEF5350); 
+
+  // Clean aesthetic quotes array
+  final List<String> _quotes = [
+    "Ten little fingers, ten perfect toes, fill our hearts with love that overflows.",
+    "Dream big, little star. The universe is waiting to see your golden light."
+  ];
+
+  late final Stream<DateTime> _clockStream;
 
   @override
   void initState() {
@@ -45,9 +59,12 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
+    
     _pulse = Tween(begin: 0.98, end: 1.02).animate(
       CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
     );
+
+    _clockStream = Stream.periodic(const Duration(seconds: 1), (_) => DateTime.now());
   }
 
   @override
@@ -56,40 +73,38 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-  Color _statusColor(String status) =>
-      status == 'OK' ? _statusGreen : _statusRed;
+  Color _statusColor(String status) => status == 'OK' ? _statusGreen : _statusRed;
 
   String _tempLabel(double t) {
-    if (t < _tempMin) return 'Brrr, too chilly ❄️';
-    if (t > _tempMax) return 'A bit too warm ☀️';
-    if (t >= 20 && t <= 21) return 'Perfectly cozy ✨';
-    return 'Just right 🥰';
+    if (t < _tempMin) return 'Chilly ❄️';
+    if (t > _tempMax) return 'Warm ☀️';
+    return 'Cozy ✨';
   }
 
   String _humLabel(double h) {
-    if (h < _humMin) return 'A little dry 🍃';
-    if (h > _humMax) return 'Too humid ☁️';
-    return 'Sweet & comfortable 💧';
+    if (h < _humMin) return 'Dry 🍃';
+    if (h > _humMax) return 'Humid ☁️';
+    return 'Sweet 💧';
   }
 
   Color _tempColor(double t) {
-    if (t < _tempMin) return const Color(0xFFB3E5FC); // Soft pastel blue
+    if (t < _tempMin) return const Color(0xFF29B6F6);
     if (t > _tempMax) return _statusRed;
     return _statusGreen;
   }
 
   Color _humColor(double h) {
     if (h < _humMin) return _statusOrange;
-    if (h > _humMax) return const Color(0xFFB3E5FC);
+    if (h > _humMax) return const Color(0xFF29B6F6);
     return _statusGreen;
   }
 
-  // ── Build ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
-      backgroundColor: _bgPink,
+      backgroundColor: _bgLight,
       body: SafeArea(
         child: StreamBuilder<SensorReading?>(
           stream: DatabaseService.instance.latestStream,
@@ -97,183 +112,543 @@ class _HomeScreenState extends State<HomeScreen>
             final latest = latestSnap.data;
             final isAlert = latest?.isAlert ?? false;
 
-            return CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                // ── App bar ─────────────────────────────────────────────────
-                SliverAppBar(
-                  backgroundColor: _bgPink,
-                  elevation: 0,
-                  pinned: true,
-                  expandedHeight: 110,
-                  actions: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: _softWhite,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: _accentPink.withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
+            return SizedBox(
+              height: screenHeight,
+              child: Row(
+                children: [
+                  // ── LEFT SIDE: PANELS & DATA (60% Width) ──────────────────────────
+                  Expanded(
+                    flex: 6,
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Center-aligned Panel-less Fredoka Title
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const SizedBox(height: 12),
+                              Text(
+                                'Bibino',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.fredoka(
+                                  fontSize: 44,
+                                  fontWeight: FontWeight.w900,
+                                  color: _bubbleTextFill,
+                                  letterSpacing: 1.5,
+                                  shadows: [
+                                    const Shadow(
+                                      color: Colors.white,
+                                      offset: Offset(-1, -1),
+                                      blurRadius: 0,
+                                    ),
+                                    const Shadow(
+                                      color: _bubbleText3D,
+                                      offset: Offset(2, 2),
+                                      blurRadius: 0,
+                                    ),
+                                    const Shadow(
+                                      color: _bubbleText3D,
+                                      offset: Offset(4, 4),
+                                      blurRadius: 0,
+                                    ),
+                                    Shadow(
+                                      color: _bubbleText3D.withOpacity(0.3),
+                                      offset: const Offset(6, 6),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'NURSERY NEST ENVIRONMENT MONITOR',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.quicksand(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: _textMuted,
+                                  letterSpacing: 2.0,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Status Banner
+                          _StatusBanner(
+                            reading: latest,
+                            pulse: _pulse,
+                            isAlert: isAlert,
+                            statusColor: latest != null ? _statusColor(latest.status) : _textMuted,
+                            brightYellow: _brightYellow,
+                            panelBg: _panelBg,
+                            textDark: _textDark,
+                            textMuted: _textMuted,
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Metrics (Temperature & Humidity)
+                          if (latest != null) ...[
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _MetricCard(
+                                    icon: Icons.wb_twighlight,
+                                    label: 'Temp',
+                                    value: '${latest.temperature.toStringAsFixed(1)}°C',
+                                    sublabel: _tempLabel(latest.temperature),
+                                    color: _tempColor(latest.temperature),
+                                    minVal: _tempMin,
+                                    maxVal: _tempMax,
+                                    currentVal: latest.temperature,
+                                    unit: '°C',
+                                    textDark: _textDark,
+                                    textMuted: _textMuted,
+                                    panelBg: _panelBg,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _MetricCard(
+                                    icon: Icons.opacity_rounded,
+                                    label: 'Humidity',
+                                    value: '${latest.humidity.toStringAsFixed(0)}%',
+                                    sublabel: _humLabel(latest.humidity),
+                                    color: _humColor(latest.humidity),
+                                    minVal: _humMin,
+                                    maxVal: _humMax,
+                                    currentVal: latest.humidity,
+                                    unit: '%',
+                                    textDark: _textDark,
+                                    textMuted: _textMuted,
+                                    panelBg: _panelBg,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
-                        ),
-                        child: IconButton(
-                          icon: const Icon(
-                            Icons.child_care_rounded,
-                            color: _textDark,
-                            size: 24,
+                          const SizedBox(height: 20),
+
+                          // ── Seamless Aesthetic Quote View with Bees! ──
+                          _AestheticBeeQuoteView(
+                            quotes: _quotes,
+                            textDark: _textDark,
                           ),
-                          tooltip: 'Live Camera',
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const CameraScreen()),
+                          const SizedBox(height: 20),
+
+                          // Chart Visualizer
+                          Expanded(
+                            child: _HistoryChart(
+                              textMuted: _textMuted,
+                              panelBg: _panelBg,
+                              bgLight: _bgLight,
+                              tempColor: _statusRed,
+                              humColor: const Color(0xFF29B6F6),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
-                  ],
-                  flexibleSpace: FlexibleSpaceBar(
-                    titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
-                    title: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Sweet Dreams',
-                          style: GoogleFonts.quicksand(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: _textDark,
+                  ),
+
+                  // ── RIGHT SIDE: VISUAL UTILITIES & CUTE BEAR (40% Width) ──────────
+                  Expanded(
+                    flex: 4,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _panelBg.withOpacity(0.5),
+                        border: Border(left: BorderSide(color: _brightYellow.withOpacity(0.3), width: 2)),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                      child: Column(
+                        children: [
+                          // Top Window Element: Big Clock Circle Container
+                          Expanded(
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final size = constraints.maxHeight < constraints.maxWidth 
+                                    ? constraints.maxHeight * 0.9 
+                                    : constraints.maxWidth * 0.9;
+                                return Center(
+                                  child: Container(
+                                    width: size,
+                                    height: size,
+                                    decoration: BoxDecoration(
+                                      color: _panelBg,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: _brightYellow, width: 4),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: _brightYellow.withOpacity(0.2),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        )
+                                      ]
+                                    ),
+                                    padding: const EdgeInsets.all(12),
+                                    child: StreamBuilder<DateTime>(
+                                      stream: _clockStream,
+                                      initialData: DateTime.now(),
+                                      builder: (context, snapshot) {
+                                        final now = snapshot.data!;
+                                        return FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              _buildClockSegment(DateFormat('HH').format(now)),
+                                              _buildClockSeparator(),
+                                              _buildClockSegment(DateFormat('mm').format(now)),
+                                              _buildClockSeparator(),
+                                              _buildClockSegment(DateFormat('ss').format(now)),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                );
+                              }
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Nursery Nest Environment Tracker',
-                          style: GoogleFonts.quicksand(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: _textMuted,
-                            letterSpacing: 0.3,
+                          const SizedBox(height: 16),
+                          
+                          // Bottom Window Element: Bear holding the Small Cute Pastel Camera Button
+                          Expanded(
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final containerSize = constraints.maxHeight < constraints.maxWidth 
+                                    ? constraints.maxHeight * 0.95 
+                                    : constraints.maxWidth * 0.95;
+                                
+                                return Center(
+                                  child: SizedBox(
+                                    width: containerSize,
+                                    height: containerSize,
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        // Bear frame
+                                        Positioned(
+                                          bottom: 10,
+                                          child: _CuteBearGraphic(size: containerSize * 0.85),
+                                        ),
+                                        // Camera button
+                                        Positioned(
+                                          right: containerSize * 0.04,
+                                          top: containerSize * 0.28,
+                                          child: GestureDetector(
+                                            onTap: () => Navigator.push(
+                                              context,
+                                              MaterialPageRoute(builder: (_) => const CameraScreen()),
+                                            ),
+                                            child: Container(
+                                              width: containerSize * 0.28,
+                                              height: containerSize * 0.28,
+                                              decoration: BoxDecoration(
+                                                color: _pastelYellow,
+                                                shape: BoxShape.circle,
+                                                border: Border.all(color: _textDark, width: 3),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: _textDark.withOpacity(0.15),
+                                                    blurRadius: 4,
+                                                    offset: const Offset(0, 4),
+                                                  )
+                                                ],
+                                              ),
+                                              child: Center(
+                                                child: Icon(
+                                                  Icons.videocam_rounded,
+                                                  color: _textDark,
+                                                  size: containerSize * 0.14,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      // ── Status banner ──────────────────────────────────────
-                      _StatusBanner(
-                        reading: latest,
-                        pulse: _pulse,
-                        isAlert: isAlert,
-                        statusColor: latest != null
-                            ? _statusColor(latest.status)
-                            : _textMuted,
-                        accentPink: _accentPink,
-                        softWhite: _softWhite,
-                        textDark: _textDark,
-                        textMuted: _textMuted,
-                      ),
-                      const SizedBox(height: 24),
-
-                      // ── Metric cards ───────────────────────────────────────
-                      if (latest != null) ...[
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _MetricCard(
-                                icon: Icons.wb_twighlight,
-                                label: 'Temperature',
-                                value: '${latest.temperature.toStringAsFixed(1)}°C',
-                                sublabel: _tempLabel(latest.temperature),
-                                color: _tempColor(latest.temperature),
-                                minVal: _tempMin,
-                                maxVal: _tempMax,
-                                currentVal: latest.temperature,
-                                unit: '°C',
-                                textDark: _textDark,
-                                textMuted: _textMuted,
-                                softWhite: _softWhite,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _MetricCard(
-                                icon: Icons.opacity_rounded,
-                                label: 'Humidity',
-                                value: '${latest.humidity.toStringAsFixed(0)}%',
-                                sublabel: _humLabel(latest.humidity),
-                                color: _humColor(latest.humidity),
-                                minVal: _humMin,
-                                maxVal: _humMax,
-                                currentVal: latest.humidity,
-                                unit: '%',
-                                textDark: _textDark,
-                                textMuted: _textMuted,
-                                softWhite: _softWhite,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Center(
-                          child: Text(
-                            'Last cuddle check: ${DateFormat('HH:mm:ss').format(latest.timestamp)}',
-                            style: GoogleFonts.quicksand(
-                              fontSize: 12,
-                              color: _textMuted,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-
-                      const SizedBox(height: 28),
-
-                      // ── History chart ──────────────────────────────────────
-                      Text(
-                        'Nursery Trends (Last 20 Logged)',
-                        style: GoogleFonts.quicksand(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: _textDark,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _HistoryChart(
-                        textMuted: _textMuted,
-                        softWhite: _softWhite,
-                        bgPink: _bgPink,
-                        tempColor: _statusRed,
-                        humColor: const Color(0xFFB3E5FC),
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // ── Safe-range reference ───────────────────────────────
-                      _SafeRangeCard(
-                        textDark: _textDark,
-                        textMuted: _textMuted,
-                        softWhite: _softWhite,
-                        statusRed: _statusRed,
-                      ),
-                      const SizedBox(height: 32),
-                    ]),
-                  ),
-                ),
-              ],
+                ],
+              ),
             );
           },
         ),
       ),
+    );
+  }
+
+  Widget _buildClockSegment(String text) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+      decoration: BoxDecoration(
+        color: _pastelYellow,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _brightYellow.withOpacity(0.4),
+            offset: const Offset(0, 4),
+          )
+        ]
+      ),
+      child: Text(
+        text,
+        style: GoogleFonts.fredoka(
+          fontSize: 38,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+          shadows: [
+            Shadow(
+              color: _brightYellow.withOpacity(0.5),
+              offset: const Offset(2, 2),
+            )
+          ]
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClockSeparator() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(width: 8, height: 8, decoration: const BoxDecoration(color: _brightYellow, shape: BoxShape.circle)),
+          const SizedBox(height: 12),
+          Container(width: 8, height: 8, decoration: const BoxDecoration(color: _brightYellow, shape: BoxShape.circle)),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Custom Built-in Bear UI Vector ─────────────────────────────────────────────
+class _CuteBearGraphic extends StatelessWidget {
+  final double size;
+  const _CuteBearGraphic({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color bearBrown = const Color(0xFF916A4C);
+    final Color innerTan = const Color(0xFFEED0B1);
+    final Color lineBorder = const Color(0xFF331D12);
+    final Color pacifierBlue = const Color(0xFF81D4FA);
+
+    return Container(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Left Ear
+          Positioned(
+            left: size * 0.16,
+            top: size * 0.08,
+            child: Container(
+              width: size * 0.26,
+              height: size * 0.26,
+              decoration: BoxDecoration(
+                color: bearBrown,
+                shape: BoxShape.circle,
+                border: Border.all(color: lineBorder, width: 3),
+              ),
+              child: Center(
+                child: Container(
+                  width: size * 0.14,
+                  height: size * 0.14,
+                  decoration: BoxDecoration(color: innerTan, shape: BoxShape.circle),
+                ),
+              ),
+            ),
+          ),
+          // Right Ear
+          Positioned(
+            right: size * 0.16,
+            top: size * 0.08,
+            child: Container(
+              width: size * 0.26,
+              height: size * 0.26,
+              decoration: BoxDecoration(
+                color: bearBrown,
+                shape: BoxShape.circle,
+                border: Border.all(color: lineBorder, width: 3),
+              ),
+              child: Center(
+                child: Container(
+                  width: size * 0.14,
+                  height: size * 0.14,
+                  decoration: BoxDecoration(color: innerTan, shape: BoxShape.circle),
+                ),
+              ),
+            ),
+          ),
+          // Body Base
+          Positioned(
+            bottom: 0,
+            child: Container(
+              width: size * 0.62,
+              height: size * 0.45,
+              decoration: BoxDecoration(
+                color: bearBrown,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(50)),
+                border: Border.all(color: lineBorder, width: 3),
+              ),
+              child: Center(
+                child: Container(
+                  width: size * 0.38,
+                  height: size * 0.32,
+                  margin: const EdgeInsets.only(top: 15),
+                  decoration: BoxDecoration(
+                    color: innerTan,
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Left Arm Resting
+          Positioned(
+            left: size * 0.08,
+            bottom: size * 0.12,
+            child: Container(
+              width: size * 0.16,
+              height: size * 0.22,
+              decoration: BoxDecoration(
+                color: bearBrown,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: lineBorder, width: 3),
+              ),
+            ),
+          ),
+          // Right Arm Waving Up
+          Positioned(
+            right: size * 0.08,
+            top: size * 0.42,
+            child: Transform.rotate(
+              angle: 0.4,
+              child: Container(
+                width: size * 0.16,
+                height: size * 0.24,
+                decoration: BoxDecoration(
+                  color: bearBrown,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: lineBorder, width: 3),
+                ),
+              ),
+            ),
+          ),
+          // Head Main Base
+          Positioned(
+            top: size * 0.18,
+            child: Container(
+              width: size * 0.72,
+              height: size * 0.60,
+              decoration: BoxDecoration(
+                color: bearBrown,
+                borderRadius: BorderRadius.circular(70),
+                border: Border.all(color: lineBorder, width: 3),
+              ),
+              child: Stack(
+                children: [
+                  // Eyes
+                  Positioned(left: size * 0.18, top: size * 0.16, child: _buildEye(size)),
+                  Positioned(right: size * 0.18, top: size * 0.16, child: _buildEye(size)),
+                  // Cheeks Spiral Swirls
+                  Positioned(left: size * 0.08, top: size * 0.24, child: _buildCheek(size)),
+                  Positioned(right: size * 0.08, top: size * 0.24, child: _buildCheek(size)),
+                  // Snout Panel
+                  Positioned(
+                    bottom: size * 0.10,
+                    left: size * 0.22,
+                    right: size * 0.22,
+                    child: Container(
+                      height: size * 0.20,
+                      decoration: BoxDecoration(color: innerTan, borderRadius: BorderRadius.circular(24)),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Bear Nose
+                          Positioned(
+                            top: 4,
+                            child: Container(
+                              width: size * 0.08,
+                              height: size * 0.05,
+                              decoration: BoxDecoration(color: lineBorder, borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                          // Round Pacifier
+                          Positioned(
+                            bottom: 4,
+                            child: Container(
+                              width: size * 0.11,
+                              height: size * 0.11,
+                              decoration: BoxDecoration(
+                                color: pacifierBlue,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: lineBorder, width: 2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: lineBorder.withOpacity(0.15),
+                                    blurRadius: 2,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              alignment: Alignment.center,
+                              child: Container(
+                                width: size * 0.04,
+                                height: size * 0.04,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.9),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEye(double size) {
+    return Container(
+      width: size * 0.06,
+      height: size * 0.09,
+      decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
+      alignment: Alignment.topLeft,
+      padding: const EdgeInsets.all(2),
+      child: Container(width: size * 0.02, height: size * 0.02, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+    );
+  }
+
+  Widget _buildCheek(double size) {
+    return Container(
+      width: size * 0.12,
+      height: size * 0.12,
+      decoration: BoxDecoration(color: const Color(0xFFEF9A9A).withOpacity(0.6), shape: BoxShape.circle),
+      child: Icon(Icons.gesture_rounded, size: size * 0.08, color: const Color(0xFFC62828).withOpacity(0.3)),
     );
   }
 }
@@ -284,8 +659,8 @@ class _StatusBanner extends StatelessWidget {
   final Animation<double> pulse;
   final bool isAlert;
   final Color statusColor;
-  final Color accentPink;
-  final Color softWhite;
+  final Color brightYellow;
+  final Color panelBg;
   final Color textDark;
   final Color textMuted;
 
@@ -294,8 +669,8 @@ class _StatusBanner extends StatelessWidget {
     required this.pulse,
     required this.isAlert,
     required this.statusColor,
-    required this.accentPink,
-    required this.softWhite,
+    required this.brightYellow,
+    required this.panelBg,
     required this.textDark,
     required this.textMuted,
   });
@@ -305,63 +680,47 @@ class _StatusBanner extends StatelessWidget {
     return ScaleTransition(
       scale: isAlert ? pulse : const AlwaysStoppedAnimation(1),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: softWhite,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: accentPink.withOpacity(0.15),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
+          color: panelBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: brightYellow.withOpacity(0.5), width: 2),
         ),
         child: Row(
           children: [
             Container(
-              width: 56,
-              height: 56,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.15),
+                color: statusColor.withOpacity(0.2),
                 shape: BoxShape.circle,
+                border: Border.all(color: statusColor, width: 2),
               ),
               child: Center(
                 child: Text(
-                  reading == null 
-                      ? '😴' 
-                      : isAlert 
-                          ? '🍼' 
-                          : '👼',
-                  style: const TextStyle(fontSize: 26),
+                  reading == null ? '😴' : isAlert ? '🍼' : '👼',
+                  style: const TextStyle(fontSize: 20),
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    reading == null
-                        ? 'Connecting cradle...'
-                        : isAlert
-                            ? 'Little love needs you!'
-                            : 'Sleeping soundly...',
+                    reading == null ? 'Syncing...' : isAlert ? 'Attention Required!' : 'Sound Asleep',
                     style: GoogleFonts.quicksand(
-                      fontSize: 18,
+                      fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: textDark,
                     ),
                   ),
-                  const SizedBox(height: 2),
                   Text(
-                    reading == null ? 'Syncing background environment data' : reading!.message,
-                    style: GoogleFonts.quicksand(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: textMuted,
-                    ),
+                    reading == null ? 'Connecting data stream' : reading!.message,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.quicksand(fontSize: 12, fontWeight: FontWeight.w600, color: textMuted),
                   ),
                 ],
               ),
@@ -386,7 +745,7 @@ class _MetricCard extends StatelessWidget {
   final String   unit;
   final Color    textDark;
   final Color    textMuted;
-  final Color    softWhite;
+  final Color    panelBg;
 
   const _MetricCard({
     required this.icon,
@@ -400,89 +759,115 @@ class _MetricCard extends StatelessWidget {
     required this.unit,
     required this.textDark,
     required this.textMuted,
-    required this.softWhite,
+    required this.panelBg,
   });
 
   double get progress {
     final range = maxVal - minVal;
-    final extended = range * 1.5;
-    final low = minVal - range * 0.25;
-    return ((currentVal - low) / extended).clamp(0.0, 1.0);
+    return ((currentVal - (minVal - range * 0.25)) / (range * 1.5)).clamp(0.0, 1.0);
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: softWhite,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.1),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        color: panelBg,
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: color.withOpacity(0.8), size: 20),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: GoogleFonts.quicksand(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: textMuted,
-                ),
-              ),
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 4),
+              Text(label, style: GoogleFonts.quicksand(fontSize: 12, fontWeight: FontWeight.w700, color: textMuted)),
+              const Spacer(),
+              Text(sublabel, style: GoogleFonts.quicksand(fontSize: 11, fontWeight: FontWeight.w700, color: textDark)),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: GoogleFonts.quicksand(
-              fontSize: 30,
-              fontWeight: FontWeight.w700,
-              color: textDark,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            sublabel,
-            style: GoogleFonts.quicksand(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: textDark.withOpacity(0.7),
-            ),
-          ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 6),
+          Text(value, style: GoogleFonts.quicksand(fontSize: 24, fontWeight: FontWeight.w800, color: textDark)),
+          const SizedBox(height: 6),
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: color.withOpacity(0.1),
+              backgroundColor: color.withOpacity(0.15),
               color: color,
-              minHeight: 8,
+              minHeight: 6,
             ),
           ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('$minVal$unit',
-                  style: GoogleFonts.quicksand(
-                      fontSize: 10, fontWeight: FontWeight.w500, color: textMuted)),
-              Text('$maxVal$unit',
-                  style: GoogleFonts.quicksand(
-                      fontSize: 10, fontWeight: FontWeight.w500, color: textMuted)),
-            ],
-          ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Seamless Aesthetic Quote Carousel Container ──────────────────────────────
+class _AestheticBeeQuoteView extends StatelessWidget {
+  final List<String> quotes;
+  final Color textDark;
+
+  const _AestheticBeeQuoteView({
+    required this.quotes,
+    required this.textDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 52,
+      child: PageView.builder(
+        itemCount: quotes.length,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Flying left bee with dynamic trailing dots and heart decoration path
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🐝', style: TextStyle(fontSize: 16)),
+                    const SizedBox(width: 2),
+                    Text(
+                      '..·💛·....·💛·....·💛·....·💛·....·💛·..',
+                      style: GoogleFonts.quicksand(
+                        fontSize: 12, 
+                        fontWeight: FontWeight.w900, 
+                        color: Colors.amber
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 10),
+                // Aesthetic large floating quote body
+                Expanded(
+                  child: Text(
+                    quotes[index],
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.comfortaa(
+                      fontSize: 15, // Significantly larger, clean, round text
+                      fontWeight: FontWeight.w700,
+                      color: textDark,
+                      fontStyle: FontStyle.italic,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Right watching bee decoration anchor
+                const Text('..·💛·....·💛·....·💛·....·💛·....·💛·..🐝', style: TextStyle(fontSize: 16)),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -491,15 +876,15 @@ class _MetricCard extends StatelessWidget {
 // ── History Chart ──────────────────────────────────────────────────────────────
 class _HistoryChart extends StatelessWidget {
   final Color textMuted;
-  final Color softWhite;
-  final Color bgPink;
+  final Color panelBg;
+  final Color bgLight;
   final Color tempColor;
   final Color humColor;
 
   const _HistoryChart({
     required this.textMuted,
-    required this.softWhite,
-    required this.bgPink,
+    required this.panelBg,
+    required this.bgLight,
     required this.tempColor,
     required this.humColor,
   });
@@ -510,220 +895,53 @@ class _HistoryChart extends StatelessWidget {
       stream: DatabaseService.instance.historyStream(),
       builder: (context, snap) {
         final readings = snap.data ?? [];
-
         if (readings.isEmpty) {
           return Container(
-            height: 180,
-            decoration: BoxDecoration(
-              color: softWhite,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Center(
-              child: Text('Cradle is preparing stats... 🧸',
-                  style: GoogleFonts.quicksand(color: textMuted, fontWeight: FontWeight.w500)),
-            ),
+            decoration: BoxDecoration(color: panelBg, borderRadius: BorderRadius.circular(20)),
+            child: Center(child: Text('Aggregating statistics... 🧸', style: GoogleFonts.quicksand(color: textMuted, fontWeight: FontWeight.w600))),
           );
         }
 
-        final tempSpots = readings
-            .asMap()
-            .entries
-            .map((e) => FlSpot(e.key.toDouble(), e.value.temperature))
-            .toList();
-        final humSpots = readings
-            .asMap()
-            .entries
-            .map((e) => FlSpot(e.key.toDouble(), e.value.humidity))
-            .toList();
+        final tempSpots = readings.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.temperature)).toList();
+        final humSpots = readings.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.humidity)).toList();
 
         return Container(
-          height: 220,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: softWhite,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: textMuted.withOpacity(0.1),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  _legend(tempColor, 'Temp'),
-                  const SizedBox(width: 16),
-                  _legend(humColor, 'Humidity'),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: LineChart(
-                  LineChartData(
-                    gridData: FlGridData(
-                      drawVerticalLine: false,
-                      getDrawingHorizontalLine: (_) => FlLine(
-                        color: bgPink,
-                        strokeWidth: 1.5,
-                      ),
-                    ),
-                    titlesData: FlTitlesData(
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 28,
-                          getTitlesWidget: (v, _) => Text(
-                            v.toInt().toString(),
-                            style: GoogleFonts.quicksand(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                                color: textMuted),
-                          ),
-                        ),
-                      ),
-                      bottomTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false)),
-                      topTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false)),
-                      rightTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false)),
-                    ),
-                    borderData: FlBorderData(show: false),
-                    lineBarsData: [
-                      _line(tempSpots, tempColor),
-                      _line(humSpots, humColor),
-                    ],
-                    rangeAnnotations: RangeAnnotations(
-                      horizontalRangeAnnotations: [
-                        HorizontalRangeAnnotation(
-                          y1: 18, y2: 22,
-                          color: tempColor.withOpacity(0.04),
-                        ),
-                        HorizontalRangeAnnotation(
-                          y1: 40, y2: 60,
-                          color: humColor.withOpacity(0.04),
-                        ),
-                      ],
-                    ),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: panelBg, borderRadius: BorderRadius.circular(20)),
+          child: LineChart(
+            LineChartData(
+              gridData: FlGridData(drawVerticalLine: false, getDrawingHorizontalLine: (_) => FlLine(color: bgLight, strokeWidth: 1.5)),
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 22,
+                    getTitlesWidget: (v, _) => Text(v.toInt().toString(), style: GoogleFonts.quicksand(fontSize: 9, fontWeight: FontWeight.w700, color: textMuted)),
                   ),
                 ),
+                bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               ),
-            ],
+              borderData: FlBorderData(show: false),
+              lineBarsData: [
+                _line(tempSpots, tempColor),
+                _line(humSpots, humColor),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  LineChartBarData _line(List<FlSpot> spots, Color color) =>
-      LineChartBarData(
+  LineChartBarData _line(List<FlSpot> spots, Color color) => LineChartBarData(
         spots: spots,
         isCurved: true,
         color: color,
-        barWidth: 3.5,
+        barWidth: 3,
         dotData: const FlDotData(show: false),
-        belowBarData: BarAreaData(
-          show: true,
-          color: color.withOpacity(0.05),
-        ),
-      );
-
-  Widget _legend(Color color, String text) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(
-        width: 10, height: 10,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      ),
-      const SizedBox(width: 6),
-      Text(text,
-          style: GoogleFonts.quicksand(
-              fontSize: 12, fontWeight: FontWeight.w600, color: textMuted)),
-    ],
-  );
-}
-
-// ── Safe Range Reference Card ─────────────────────────────────────────────────
-class _SafeRangeCard extends StatelessWidget {
-  final Color textDark;
-  final Color textMuted;
-  final Color softWhite;
-  final Color statusRed;
-
-  const _SafeRangeCard({
-    required this.textDark,
-    required this.textMuted,
-    required this.softWhite,
-    required this.statusRed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: softWhite,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: textMuted.withOpacity(0.15), width: 1.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                '🧸 Nursery Guide',
-                style: GoogleFonts.quicksand(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: textDark,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _rangeRow('Temperature', '18°C – 22°C', statusRed),
-          const SizedBox(height: 10),
-          _rangeRow('Humidity', '40% – 60%', const Color(0xFFB3E5FC)),
-          const SizedBox(height: 16),
-          Text(
-            'Pediatric guidelines favor mild settings to secure a sound, restful sleep.',
-            style: GoogleFonts.quicksand(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: textMuted,
-              height: 1.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _rangeRow(String label, String range, Color color) =>
-      Row(
-        children: [
-          Text(label,
-              style: GoogleFonts.quicksand(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: textDark)),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(range,
-                style: GoogleFonts.quicksand(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: textDark)),
-          ),
-        ],
+        belowBarData: BarAreaData(show: true, color: color.withOpacity(0.03)),
       );
 }
+
