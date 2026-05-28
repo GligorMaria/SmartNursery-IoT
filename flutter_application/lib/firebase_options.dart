@@ -22,7 +22,7 @@ class DefaultFirebaseOptions {
     appId:             '1:941631958102:web:8d1580671b3b847ff3dff7', // ← deja il stii!
     messagingSenderId: '941631958102',              // ← deja il stii!
     projectId:         'smartnursery-iot',          // ← deja il stii!
-    databaseURL:       'https://smartnursery-iot-default-rtdb.firebaseio.com',
+    databaseURL:       'https://smartnursery-iot-53f11-default-rtdb.firebaseio.com',
     storageBucket:     'smartnursery-iot.appspot.com',
   );
 
