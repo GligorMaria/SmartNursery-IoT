@@ -1,4 +1,3 @@
-
 // lib/screens/home_screen.dart
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../models/sensor_reading.dart';
 import '../services/database_service.dart';
+import 'camera_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,11 +20,23 @@ class _HomeScreenState extends State<HomeScreen>
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulse;
 
-  // Safe ranges (must match Python script)
+  // Safe ranges
   static const double _tempMin = 18;
   static const double _tempMax = 22;
   static const double _humMin  = 40;
   static const double _humMax  = 60;
+
+  // Theme Palette - Soft & Elegant Pastels
+  static const Color _bgPink = Color(0xFFFFF2F5);       // Strawberry milk backdrop
+  static const Color _textDark = Color(0xFF6D4C57);     // Cozy deep cocoa/rose brown
+  static const Color _textMuted = Color(0xFFBCA6AC);    // Soft dusty rose gray
+  static const Color _accentPink = Color(0xFFFFB7C5);   // Sweet bubblegum pink
+  static const Color _softWhite = Color(0xFFFFFFFF);    // Clean marshmallow white
+  
+  // Status Colors
+  static const Color _statusGreen = Color(0xFFA8D5BA);  // Soft sage green
+  static const Color _statusOrange = Color(0xFFFFCDA3); // Soft peach
+  static const Color _statusRed = Color(0xFFFF9AA2);    // Soft pastel coral red
 
   @override
   void initState() {
@@ -33,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-    _pulse = Tween(begin: 0.95, end: 1.05).animate(
+    _pulse = Tween(begin: 0.98, end: 1.02).animate(
       CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
     );
   }
@@ -46,25 +58,38 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   Color _statusColor(String status) =>
-      status == 'OK' ? const Color(0xFF4CAF7D) : const Color(0xFFE57373);
+      status == 'OK' ? _statusGreen : _statusRed;
 
   String _tempLabel(double t) {
-    if (t < _tempMin) return 'Too Cold';
-    if (t > _tempMax) return 'Too Warm';
-    return 'Just Right';
+    if (t < _tempMin) return 'Brrr, too chilly ❄️';
+    if (t > _tempMax) return 'A bit too warm ☀️';
+    if (t >= 20 && t <= 21) return 'Perfectly cozy ✨';
+    return 'Just right 🥰';
   }
 
   String _humLabel(double h) {
-    if (h < _humMin) return 'Too Dry';
-    if (h > _humMax) return 'Too Humid';
-    return 'Perfect';
+    if (h < _humMin) return 'A little dry 🍃';
+    if (h > _humMax) return 'Too humid ☁️';
+    return 'Sweet & comfortable 💧';
+  }
+
+  Color _tempColor(double t) {
+    if (t < _tempMin) return const Color(0xFFB3E5FC); // Soft pastel blue
+    if (t > _tempMax) return _statusRed;
+    return _statusGreen;
+  }
+
+  Color _humColor(double h) {
+    if (h < _humMin) return _statusOrange;
+    if (h > _humMax) return const Color(0xFFB3E5FC);
+    return _statusGreen;
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F6FA),
+      backgroundColor: _bgPink,
       body: SafeArea(
         child: StreamBuilder<SensorReading?>(
           stream: DatabaseService.instance.latestStream,
@@ -73,32 +98,66 @@ class _HomeScreenState extends State<HomeScreen>
             final isAlert = latest?.isAlert ?? false;
 
             return CustomScrollView(
+              physics: const BouncingScrollPhysics(),
               slivers: [
                 // ── App bar ─────────────────────────────────────────────────
                 SliverAppBar(
-                  backgroundColor: const Color(0xFFF0F6FA),
+                  backgroundColor: _bgPink,
                   elevation: 0,
                   pinned: true,
-                  expandedHeight: 100,
+                  expandedHeight: 110,
+                  actions: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _softWhite,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: _accentPink.withOpacity(0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.child_care_rounded,
+                            color: _textDark,
+                            size: 24,
+                          ),
+                          tooltip: 'Live Camera',
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const CameraScreen()),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                   flexibleSpace: FlexibleSpaceBar(
-                    titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+                    titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
                     title: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '🍼 Baby Monitor',
-                          style: GoogleFonts.nunito(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF2D4059),
+                          'Sweet Dreams',
+                          style: GoogleFonts.quicksand(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: _textDark,
                           ),
                         ),
+                        const SizedBox(height: 2),
                         Text(
-                          'Room environment tracker',
-                          style: GoogleFonts.nunito(
-                            fontSize: 12,
-                            color: const Color(0xFF8FA3B1),
+                          'Nursery Nest Environment Tracker',
+                          style: GoogleFonts.quicksand(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: _textMuted,
+                            letterSpacing: 0.3,
                           ),
                         ),
                       ],
@@ -107,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
 
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
                       // ── Status banner ──────────────────────────────────────
@@ -117,9 +176,13 @@ class _HomeScreenState extends State<HomeScreen>
                         isAlert: isAlert,
                         statusColor: latest != null
                             ? _statusColor(latest.status)
-                            : const Color(0xFFB0BEC5),
+                            : _textMuted,
+                        accentPink: _accentPink,
+                        softWhite: _softWhite,
+                        textDark: _textDark,
+                        textMuted: _textMuted,
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
 
                       // ── Metric cards ───────────────────────────────────────
                       if (latest != null) ...[
@@ -127,63 +190,82 @@ class _HomeScreenState extends State<HomeScreen>
                           children: [
                             Expanded(
                               child: _MetricCard(
-                                icon: Icons.thermostat_rounded,
+                                icon: Icons.wb_twighlight,
                                 label: 'Temperature',
-                                value: '${latest.temperature.toStringAsFixed(1)} °C',
+                                value: '${latest.temperature.toStringAsFixed(1)}°C',
                                 sublabel: _tempLabel(latest.temperature),
                                 color: _tempColor(latest.temperature),
                                 minVal: _tempMin,
                                 maxVal: _tempMax,
                                 currentVal: latest.temperature,
                                 unit: '°C',
+                                textDark: _textDark,
+                                textMuted: _textMuted,
+                                softWhite: _softWhite,
                               ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
                               child: _MetricCard(
-                                icon: Icons.water_drop_rounded,
+                                icon: Icons.opacity_rounded,
                                 label: 'Humidity',
-                                value: '${latest.humidity.toStringAsFixed(0)} %',
+                                value: '${latest.humidity.toStringAsFixed(0)}%',
                                 sublabel: _humLabel(latest.humidity),
                                 color: _humColor(latest.humidity),
                                 minVal: _humMin,
                                 maxVal: _humMax,
                                 currentVal: latest.humidity,
                                 unit: '%',
+                                textDark: _textDark,
+                                textMuted: _textMuted,
+                                softWhite: _softWhite,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Last updated: ${DateFormat('HH:mm:ss').format(latest.timestamp)}',
-                          style: GoogleFonts.nunito(
-                            fontSize: 12,
-                            color: const Color(0xFF8FA3B1),
+                        const SizedBox(height: 12),
+                        Center(
+                          child: Text(
+                            'Last cuddle check: ${DateFormat('HH:mm:ss').format(latest.timestamp)}',
+                            style: GoogleFonts.quicksand(
+                              fontSize: 12,
+                              color: _textMuted,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                          textAlign: TextAlign.center,
                         ),
                       ],
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 28),
 
                       // ── History chart ──────────────────────────────────────
                       Text(
-                        'History (last 20 readings)',
-                        style: GoogleFonts.nunito(
+                        'Nursery Trends (Last 20 Logged)',
+                        style: GoogleFonts.quicksand(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFF2D4059),
+                          color: _textDark,
                         ),
                       ),
                       const SizedBox(height: 12),
-                      _HistoryChart(),
+                      _HistoryChart(
+                        textMuted: _textMuted,
+                        softWhite: _softWhite,
+                        bgPink: _bgPink,
+                        tempColor: _statusRed,
+                        humColor: const Color(0xFFB3E5FC),
+                      ),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 28),
 
                       // ── Safe-range reference ───────────────────────────────
-                      const _SafeRangeCard(),
-                      const SizedBox(height: 24),
+                      _SafeRangeCard(
+                        textDark: _textDark,
+                        textMuted: _textMuted,
+                        softWhite: _softWhite,
+                        statusRed: _statusRed,
+                      ),
+                      const SizedBox(height: 32),
                     ]),
                   ),
                 ),
@@ -194,18 +276,6 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
   }
-
-  Color _tempColor(double t) {
-    if (t < _tempMin) return const Color(0xFF5BC0EB);   // cold blue
-    if (t > _tempMax) return const Color(0xFFE57373);   // warm red
-    return const Color(0xFF4CAF7D);                      // safe green
-  }
-
-  Color _humColor(double h) {
-    if (h < _humMin) return const Color(0xFFF4A261);   // dry orange
-    if (h > _humMax) return const Color(0xFF5BC0EB);   // damp blue
-    return const Color(0xFF4CAF7D);
-  }
 }
 
 // ── Status Banner ──────────────────────────────────────────────────────────────
@@ -214,12 +284,20 @@ class _StatusBanner extends StatelessWidget {
   final Animation<double> pulse;
   final bool isAlert;
   final Color statusColor;
+  final Color accentPink;
+  final Color softWhite;
+  final Color textDark;
+  final Color textMuted;
 
   const _StatusBanner({
     required this.reading,
     required this.pulse,
     required this.isAlert,
     required this.statusColor,
+    required this.accentPink,
+    required this.softWhite,
+    required this.textDark,
+    required this.textMuted,
   });
 
   @override
@@ -227,29 +305,36 @@ class _StatusBanner extends StatelessWidget {
     return ScaleTransition(
       scale: isAlert ? pulse : const AlwaysStoppedAnimation(1),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
         decoration: BoxDecoration(
-          color: statusColor.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: statusColor.withOpacity(0.5), width: 2),
+          color: softWhite,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: accentPink.withOpacity(0.15),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Row(
           children: [
             Container(
-              width: 52,
-              height: 52,
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.2),
+                color: statusColor.withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                reading == null
-                    ? Icons.signal_wifi_off_rounded
-                    : isAlert
-                        ? Icons.warning_amber_rounded
-                        : Icons.check_circle_rounded,
-                color: statusColor,
-                size: 28,
+              child: Center(
+                child: Text(
+                  reading == null 
+                      ? '😴' 
+                      : isAlert 
+                          ? '🍼' 
+                          : '👼',
+                  style: const TextStyle(fontSize: 26),
+                ),
               ),
             ),
             const SizedBox(width: 16),
@@ -259,24 +344,25 @@ class _StatusBanner extends StatelessWidget {
                 children: [
                   Text(
                     reading == null
-                        ? 'Waiting for sensor…'
+                        ? 'Connecting cradle...'
                         : isAlert
-                            ? 'ALERT – Check the room!'
-                            : 'All Good! 😊',
-                    style: GoogleFonts.nunito(
+                            ? 'Little love needs you!'
+                            : 'Sleeping soundly...',
+                    style: GoogleFonts.quicksand(
                       fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: statusColor,
+                      fontWeight: FontWeight.w700,
+                      color: textDark,
                     ),
                   ),
-                  if (reading != null)
-                    Text(
-                      reading!.message,
-                      style: GoogleFonts.nunito(
-                        fontSize: 13,
-                        color: const Color(0xFF5A7188),
-                      ),
+                  const SizedBox(height: 2),
+                  Text(
+                    reading == null ? 'Syncing background environment data' : reading!.message,
+                    style: GoogleFonts.quicksand(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: textMuted,
                     ),
+                  ),
                 ],
               ),
             ),
@@ -298,6 +384,9 @@ class _MetricCard extends StatelessWidget {
   final double   maxVal;
   final double   currentVal;
   final String   unit;
+  final Color    textDark;
+  final Color    textMuted;
+  final Color    softWhite;
 
   const _MetricCard({
     required this.icon,
@@ -309,12 +398,13 @@ class _MetricCard extends StatelessWidget {
     required this.maxVal,
     required this.currentVal,
     required this.unit,
+    required this.textDark,
+    required this.textMuted,
+    required this.softWhite,
   });
 
-  // Clamp progress to [0,1] for the gauge
   double get progress {
     final range = maxVal - minVal;
-    // show middle of gauge as the "safe" zone; extend slightly beyond
     final extended = range * 1.5;
     final low = minVal - range * 0.25;
     return ((currentVal - low) / extended).clamp(0.0, 1.0);
@@ -323,15 +413,15 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: softWhite,
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: color.withOpacity(0.1),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -340,57 +430,56 @@ class _MetricCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: color, size: 22),
-              const SizedBox(width: 8),
+              Icon(icon, color: color.withOpacity(0.8), size: 20),
+              const SizedBox(width: 6),
               Text(
                 label,
-                style: GoogleFonts.nunito(
+                style: GoogleFonts.quicksand(
                   fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF8FA3B1),
+                  fontWeight: FontWeight.w600,
+                  color: textMuted,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Text(
             value,
-            style: GoogleFonts.nunito(
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
-              color: const Color(0xFF2D4059),
+            style: GoogleFonts.quicksand(
+              fontSize: 30,
+              fontWeight: FontWeight.w700,
+              color: textDark,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             sublabel,
-            style: GoogleFonts.nunito(
+            style: GoogleFonts.quicksand(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: color,
+              color: textDark.withOpacity(0.7),
             ),
           ),
-          const SizedBox(height: 10),
-          // Mini progress bar
+          const SizedBox(height: 14),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: color.withOpacity(0.12),
+              backgroundColor: color.withOpacity(0.1),
               color: color,
-              minHeight: 6,
+              minHeight: 8,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('$minVal$unit',
-                  style: GoogleFonts.nunito(
-                      fontSize: 10, color: const Color(0xFFB0BEC5))),
+                  style: GoogleFonts.quicksand(
+                      fontSize: 10, fontWeight: FontWeight.w500, color: textMuted)),
               Text('$maxVal$unit',
-                  style: GoogleFonts.nunito(
-                      fontSize: 10, color: const Color(0xFFB0BEC5))),
+                  style: GoogleFonts.quicksand(
+                      fontSize: 10, fontWeight: FontWeight.w500, color: textMuted)),
             ],
           ),
         ],
@@ -401,6 +490,20 @@ class _MetricCard extends StatelessWidget {
 
 // ── History Chart ──────────────────────────────────────────────────────────────
 class _HistoryChart extends StatelessWidget {
+  final Color textMuted;
+  final Color softWhite;
+  final Color bgPink;
+  final Color tempColor;
+  final Color humColor;
+
+  const _HistoryChart({
+    required this.textMuted,
+    required this.softWhite,
+    required this.bgPink,
+    required this.tempColor,
+    required this.humColor,
+  });
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<SensorReading>>(
@@ -412,12 +515,12 @@ class _HistoryChart extends StatelessWidget {
           return Container(
             height: 180,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              color: softWhite,
+              borderRadius: BorderRadius.circular(24),
             ),
             child: Center(
-              child: Text('No history yet',
-                  style: GoogleFonts.nunito(color: const Color(0xFFB0BEC5))),
+              child: Text('Cradle is preparing stats... 🧸',
+                  style: GoogleFonts.quicksand(color: textMuted, fontWeight: FontWeight.w500)),
             ),
           );
         }
@@ -435,15 +538,15 @@ class _HistoryChart extends StatelessWidget {
 
         return Container(
           height: 220,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            color: softWhite,
+            borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: textMuted.withOpacity(0.1),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
@@ -451,57 +554,57 @@ class _HistoryChart extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  _legend(const Color(0xFFE57373), 'Temp (°C)'),
+                  _legend(tempColor, 'Temp'),
                   const SizedBox(width: 16),
-                  _legend(const Color(0xFF5BC0EB), 'Humidity (%)'),
+                  _legend(humColor, 'Humidity'),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Expanded(
                 child: LineChart(
                   LineChartData(
                     gridData: FlGridData(
                       drawVerticalLine: false,
-                      getDrawingHorizontalLine: (_) => const FlLine(
-                        color: Color(0xFFE8F0F5),
-                        strokeWidth: 1,
+                      getDrawingHorizontalLine: (_) => FlLine(
+                        color: bgPink,
+                        strokeWidth: 1.5,
                       ),
                     ),
                     titlesData: FlTitlesData(
                       leftTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
-                          reservedSize: 32,
+                          reservedSize: 28,
                           getTitlesWidget: (v, _) => Text(
                             v.toInt().toString(),
-                            style: GoogleFonts.nunito(
+                            style: GoogleFonts.quicksand(
                                 fontSize: 10,
-                                color: const Color(0xFFB0BEC5)),
+                                fontWeight: FontWeight.w500,
+                                color: textMuted),
                           ),
                         ),
                       ),
-                      bottomTitles:
-                          const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      topTitles:
-                          const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      rightTitles:
-                          const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      bottomTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
                     ),
                     borderData: FlBorderData(show: false),
                     lineBarsData: [
-                      _line(tempSpots, const Color(0xFFE57373)),
-                      _line(humSpots,  const Color(0xFF5BC0EB)),
+                      _line(tempSpots, tempColor),
+                      _line(humSpots, humColor),
                     ],
-                    // Safe zone bands
                     rangeAnnotations: RangeAnnotations(
                       horizontalRangeAnnotations: [
                         HorizontalRangeAnnotation(
                           y1: 18, y2: 22,
-                          color: const Color(0xFF4CAF7D).withOpacity(0.08),
+                          color: tempColor.withOpacity(0.04),
                         ),
                         HorizontalRangeAnnotation(
                           y1: 40, y2: 60,
-                          color: const Color(0xFF5BC0EB).withOpacity(0.06),
+                          color: humColor.withOpacity(0.04),
                         ),
                       ],
                     ),
@@ -520,11 +623,11 @@ class _HistoryChart extends StatelessWidget {
         spots: spots,
         isCurved: true,
         color: color,
-        barWidth: 2.5,
+        barWidth: 3.5,
         dotData: const FlDotData(show: false),
         belowBarData: BarAreaData(
           show: true,
-          color: color.withOpacity(0.08),
+          color: color.withOpacity(0.05),
         ),
       );
 
@@ -532,56 +635,67 @@ class _HistoryChart extends StatelessWidget {
     mainAxisSize: MainAxisSize.min,
     children: [
       Container(
-        width: 12, height: 12,
+        width: 10, height: 10,
         decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       ),
-      const SizedBox(width: 4),
+      const SizedBox(width: 6),
       Text(text,
-          style: GoogleFonts.nunito(
-              fontSize: 11, color: const Color(0xFF8FA3B1))),
+          style: GoogleFonts.quicksand(
+              fontSize: 12, fontWeight: FontWeight.w600, color: textMuted)),
     ],
   );
 }
 
 // ── Safe Range Reference Card ─────────────────────────────────────────────────
 class _SafeRangeCard extends StatelessWidget {
-  const _SafeRangeCard();
+  final Color textDark;
+  final Color textMuted;
+  final Color softWhite;
+  final Color statusRed;
+
+  const _SafeRangeCard({
+    required this.textDark,
+    required this.textMuted,
+    required this.softWhite,
+    required this.statusRed,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFE8F5F5), Color(0xFFEEF4FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
+        color: softWhite,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: textMuted.withOpacity(0.15), width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '📋 Safe Ranges for Baby',
-            style: GoogleFonts.nunito(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF2D4059),
-            ),
+          Row(
+            children: [
+              Text(
+                '🧸 Nursery Guide',
+                style: GoogleFonts.quicksand(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: textDark,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          _rangeRow(Icons.thermostat_rounded, 'Temperature',
-              '18 °C – 22 °C', const Color(0xFFE57373)),
-          const SizedBox(height: 8),
-          _rangeRow(Icons.water_drop_rounded, 'Humidity',
-              '40 % – 60 %', const Color(0xFF5BC0EB)),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
+          _rangeRow('Temperature', '18°C – 22°C', statusRed),
+          const SizedBox(height: 10),
+          _rangeRow('Humidity', '40% – 60%', const Color(0xFFB3E5FC)),
+          const SizedBox(height: 16),
           Text(
-            'Based on AAP (American Academy of Pediatrics) recommendations.',
-            style: GoogleFonts.nunito(
+            'Pediatric guidelines favor mild settings to secure a sound, restful sleep.',
+            style: GoogleFonts.quicksand(
               fontSize: 11,
-              color: const Color(0xFF8FA3B1),
+              fontWeight: FontWeight.w500,
+              color: textMuted,
+              height: 1.3,
             ),
           ),
         ],
@@ -589,29 +703,26 @@ class _SafeRangeCard extends StatelessWidget {
     );
   }
 
-  Widget _rangeRow(IconData icon, String label, String range, Color color) =>
+  Widget _rangeRow(String label, String range, Color color) =>
       Row(
         children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 8),
           Text(label,
-              style: GoogleFonts.nunito(
+              style: GoogleFonts.quicksand(
                   fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF5A7188))),
+                  fontWeight: FontWeight.w600,
+                  color: textDark)),
           const Spacer(),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Text(range,
-                style: GoogleFonts.nunito(
-                    fontSize: 13,
+                style: GoogleFonts.quicksand(
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: color)),
+                    color: textDark)),
           ),
         ],
       );
